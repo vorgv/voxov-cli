@@ -1,5 +1,5 @@
-use reqwest::{blocking::get, Error};
 use std::{env, process};
+use voxov_cli::client::Client;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -10,9 +10,13 @@ fn main() {
         process::exit(1);
     }
 
+    // Init client
+    let client = Client::new();
+
     // Match commands.
     let result = match args[1].as_str() {
-        "ping" => ping(),
+        "ping" => client.ping(),
+        "auth" => client.ping(),
         _ => {
             eprint_help();
             process::exit(1);
@@ -34,11 +38,7 @@ fn eprint_help() {
     eprintln!(
         "usage: vc COMMAND ...
 Commands:
-ping: ping the server"
+ping: ping the server
+auth: authenticate"
     );
-}
-
-/// Check connectivity.
-fn ping() -> Result<String, Error> {
-    get("http://localhost:8080")?.text()
 }
