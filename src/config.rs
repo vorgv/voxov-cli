@@ -21,7 +21,10 @@ impl Config {
         //TODO support config file on linux, windows, macos
         Self::default()
     }
-    pub fn default() -> Self {
+}
+
+impl Default for Config {
+    fn default() -> Self {
         let default_cost = 1_000_000_000_u64;
         Config {
             url: "localhost:8080".into(),

@@ -11,7 +11,7 @@ fn main() {
     }
 
     // Init client
-    let client = Client::new();
+    let client = Client::default();
 
     // Match commands.
     let result = match args[1].as_str() {
