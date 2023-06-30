@@ -16,7 +16,7 @@ fn main() {
     // Match commands.
     let result = match args[1].as_str() {
         "ping" => client.ping(),
-        "auth" => client.ping(),
+        "auth" => client.auth(),
         _ => {
             eprint_help();
             process::exit(1);
