@@ -1,7 +1,4 @@
-use std::{
-    io::{stdin, stdout, Read, Write},
-    process,
-};
+use std::{io::stdin, process};
 
 use reqwest::{
     blocking::{get, Client as ReqwestClient, RequestBuilder, Response},
@@ -60,11 +57,9 @@ impl Client {
     pub fn auth(&self) -> Result<String, Error> {
         let (phone, message) = self.auth_sms_send_to()?;
         println!("Send SMS message {} to {}.", message, phone);
-        println!("Press any key after sent.");
-        let mut stdout = stdout();
-        stdout.write_all(b"Press Enter to continue...").unwrap();
-        stdout.flush().unwrap();
-        stdin().read_exact(&mut [0]).unwrap();
+        println!("Press enter after sent.");
+        let mut s = "".to_string();
+        let _ = stdin().read_line(&mut s);
         let uid = self.auth_sms_sent(&phone, &message)?;
         Ok(format!("Your user ID is {}", uid))
     }
@@ -105,7 +100,7 @@ impl Client {
         let response = self
             .post()
             .header("type", "AuthSmsSendTo")
-            .header("access", &self.config.session.as_ref().unwrap().refresh)
+            .header("access", &self.config.session.as_ref().unwrap().access)
             .header("refresh", &self.config.session.as_ref().unwrap().refresh)
             .send()?;
         handle_error!(response);
@@ -118,7 +113,7 @@ impl Client {
         let response = self
             .post()
             .header("type", "AuthSmsSent")
-            .header("access", &self.config.session.as_ref().unwrap().refresh)
+            .header("access", &self.config.session.as_ref().unwrap().access)
             .header("refresh", &self.config.session.as_ref().unwrap().refresh)
             .header("phone", phone)
             .header("message", message)
