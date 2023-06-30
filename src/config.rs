@@ -1,19 +1,19 @@
 pub struct Config {
     pub url: String,
-    session: Option<Session>,
-    plan: Plan,
+    pub session: Option<Session>,
+    pub plan: Plan,
 }
 
-struct Session {
-    access: Option<String>,
-    refresh: Option<String>,
+pub struct Session {
+    pub access: String,
+    pub refresh: String,
 }
 
-struct Plan {
-    time: u64,
-    space: u64,
-    traffic: u64,
-    tips: u64,
+pub struct Plan {
+    pub time: u64,
+    pub space: u64,
+    pub traffic: u64,
+    pub tips: u64,
 }
 
 impl Config {
