@@ -9,9 +9,10 @@ license = "GPL-3.0-or-later"
 [dependencies]
 chrono = "0.4.26"
 reqwest = { version = "0.11.18", features = ["blocking"] }
+serde = "1.0.164"
+serde_derive = "1.0.164"
+toml = { version = "0.7.5", features = ["parse", "display"] }
 
 [[bin]]
 name = "vc"
 path = "src/main.rs"
-
-[lib]

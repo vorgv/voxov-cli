@@ -41,6 +41,7 @@ impl Client {
                 if s.needs_refresh() {
                     let access = self.auth_session_refresh().unwrap();
                     self.config.session.as_mut().unwrap().set_access(&access);
+                    self.config.save();
                 }
             }
             x => {
@@ -49,6 +50,7 @@ impl Client {
                 }
                 let (access, refresh) = self.auth_session_start().unwrap();
                 self.config.session = Some(Session::new(&access, &refresh));
+                self.config.save();
             }
         };
     }
