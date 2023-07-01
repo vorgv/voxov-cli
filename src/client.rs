@@ -124,6 +124,30 @@ impl Client {
         let uid = get_header(&response, "uid");
         Ok(uid)
     }
+
+    /// Manage credit.
+    pub fn cost(&self, action: &str) -> Result<String, Error> {
+        match action {
+            "pay" => self.cost_pay(),
+            "get" => Ok("TODO".into()), //TODO
+            _ => {
+                eprintln!("cost pay|get");
+                process::exit(1);
+            }
+        }
+    }
+
+    pub fn cost_pay(&self) -> Result<String, Error> {
+        let response = self
+            .post()
+            .header("type", "CostPay")
+            .header("access", &self.config.session.as_ref().unwrap().access)
+            .header("vendor", "00000000000000000000000000000000")
+            .send()?;
+        handle_error!(response);
+        let uri = get_header(&response, "uri");
+        Ok(uri)
+    }
 }
 
 impl Default for Client {

@@ -37,17 +37,17 @@ impl Session {
     }
 
     pub fn access_expired(&self) -> bool {
-        let then = DateTime::parse_from_rfc3339(&self.access).unwrap();
+        let then = DateTime::parse_from_rfc3339(&self.access_utc).unwrap();
         Utc::now() > then + Duration::minutes(self.access_minutes)
     }
 
     pub fn refresh_expired(&self) -> bool {
-        let then = DateTime::parse_from_rfc3339(&self.refresh).unwrap();
+        let then = DateTime::parse_from_rfc3339(&self.refresh_utc).unwrap();
         Utc::now() > then + Duration::days(self.refresh_days)
     }
 
     pub fn needs_refresh(&self) -> bool {
-        let then = DateTime::parse_from_rfc3339(&self.access).unwrap();
+        let then = DateTime::parse_from_rfc3339(&self.access_utc).unwrap();
         Utc::now() > then + Duration::minutes(self.access_minutes / 2)
     }
 }

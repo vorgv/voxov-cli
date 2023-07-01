@@ -15,8 +15,9 @@ fn main() {
 
     // Match commands.
     let result = match args[1].as_str() {
-        "ping" => client.ping(),
-        "auth" => client.auth(),
+        "ping" if args.len() == 2 => client.ping(),
+        "auth" if args.len() == 2 => client.auth(),
+        "cost" if args.len() == 3 => client.cost(&args[2]),
         _ => {
             eprint_help();
             process::exit(1);
@@ -38,7 +39,8 @@ fn eprint_help() {
     eprintln!(
         "usage: vc COMMAND ...
 Commands:
-ping: ping the server
-auth: authenticate"
+ping            ping the server
+auth            authenticate
+cost pay|get    pay money or get balance"
     );
 }
