@@ -34,6 +34,21 @@ impl Client {
         ReqwestClient::new().post(&self.config.url)
     }
 
+    /// Post, but with head included.
+    fn post_head(&self, fed: Option<&str>) -> RequestBuilder {
+        let mut builder = self
+            .post()
+            .header("access", &self.config.session.as_ref().unwrap().access)
+            .header("time", self.config.plan.time.to_string())
+            .header("space", self.config.plan.space.to_string())
+            .header("traffic", self.config.plan.traffic.to_string())
+            .header("tips", self.config.plan.tips.to_string());
+        if let Some(f) = fed {
+            builder = builder.header("fed", f);
+        }
+        builder
+    }
+
     /// Refresh or remake session.
     fn update_session(&mut self) {
         match &self.config.session {
@@ -158,6 +173,11 @@ impl Client {
         handle_error!(response);
         let credit = get_header(&response, "credit");
         Ok(credit)
+    }
+
+    /// Call functions.
+    pub fn gene(&self, arg: &[String]) -> Result<String, Error> {
+        Ok("".into())
     }
 }
 

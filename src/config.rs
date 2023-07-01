@@ -80,7 +80,11 @@ impl Config {
                 }
             }
         } else if cfg!(target_os = "macos") {
-            config_path = PathBuf::from("~/Library/Application Support");
+            config_path = {
+                let mut p = PathBuf::from(env::var("HOME").unwrap());
+                p.push("Library/Application Support");
+                p
+            }
         } else if cfg!(target_os = "windows") {
             config_path = PathBuf::from(env::var("APPDATA").unwrap());
         } else {

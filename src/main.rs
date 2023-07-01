@@ -18,6 +18,7 @@ fn main() {
         "ping" if args.len() == 2 => client.ping(),
         "auth" if args.len() == 2 => client.auth(),
         "cost" if args.len() == 3 => client.cost(&args[2]),
+        "gene" => client.gene(&args),
         _ => {
             eprint_help();
             process::exit(1);
@@ -39,8 +40,14 @@ fn eprint_help() {
     eprintln!(
         "usage: vc COMMAND ...
 Commands:
-ping            ping the server
-auth            authenticate
-cost pay|get    pay money or get balance"
+ping
+    ping the server.
+auth
+    authenticate.
+cost pay|get
+    pay money or get balance.
+gene [fed fid] (meta gid|call gid arg)
+    get gene's meta data with gid, or call it with arg.
+    fed field is optional, defaults to local instance."
     );
 }
