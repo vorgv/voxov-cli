@@ -129,7 +129,7 @@ impl Client {
     pub fn cost(&self, action: &str) -> Result<String, Error> {
         match action {
             "pay" => self.cost_pay(),
-            "get" => Ok("TODO".into()), //TODO
+            "get" => self.cost_get(),
             _ => {
                 eprintln!("cost pay|get");
                 process::exit(1);
@@ -147,6 +147,17 @@ impl Client {
         handle_error!(response);
         let uri = get_header(&response, "uri");
         Ok(uri)
+    }
+
+    pub fn cost_get(&self) -> Result<String, Error> {
+        let response = self
+            .post()
+            .header("type", "CostGet")
+            .header("access", &self.config.session.as_ref().unwrap().access)
+            .send()?;
+        handle_error!(response);
+        let credit = get_header(&response, "credit");
+        Ok(credit)
     }
 }
 
