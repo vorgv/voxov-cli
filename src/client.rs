@@ -35,7 +35,7 @@ impl Client {
     }
 
     /// Post, but with head included.
-    fn post_head(&self, fed: Option<&str>) -> RequestBuilder {
+    fn post_head(&self, fed: Option<String>) -> RequestBuilder {
         let mut builder = self
             .post()
             .header("access", &self.config.session.as_ref().unwrap().access)
@@ -177,7 +177,53 @@ impl Client {
 
     /// Call functions.
     pub fn gene(&self, arg: &[String]) -> Result<String, Error> {
-        Ok("".into())
+        fn usage_exit() -> ! {
+            eprintln!("gene [fed FID] (meta GID|call GID ARG)");
+            process::exit(1);
+        }
+        fn assert_len(v: &[String], n: usize) {
+            if v.len() < n {
+                usage_exit();
+            }
+        }
+        assert_len(arg, 4);
+        let (fed, method) = match arg[2].as_str() {
+            "fed" => {
+                assert_len(arg, 6);
+                (Some(arg[3].clone()), &arg[4..])
+            }
+            "meta" => (None, &arg[2..]), // Already asserted 4.
+            "call" => {
+                assert_len(arg, 5);
+                (None, &arg[2..])
+            }
+            _ => usage_exit(),
+        };
+        let builder = self.post_head(fed);
+        match method[0].as_str() {
+            "meta" => {
+                // Already asserted 6.
+                let response = builder
+                    .header("type", "GeneMeta")
+                    .header("gid", &method[1])
+                    .send()?;
+                handle_error!(response);
+                let meta = get_header(&response, "meta");
+                Ok(meta)
+            }
+            "call" => {
+                assert_len(arg, 7);
+                let response = builder
+                    .header("type", "GeneCall")
+                    .header("gid", &method[1])
+                    .header("arg", &method[2])
+                    .send()?;
+                handle_error!(response);
+                let result = get_header(&response, "result");
+                Ok(result)
+            }
+            _ => usage_exit(),
+        }
     }
 }
 

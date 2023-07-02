@@ -41,13 +41,17 @@ fn eprint_help() {
         "usage: vc COMMAND ...
 Commands:
 ping
-    ping the server.
+    Ping the server.
 auth
-    authenticate.
+    Interactively authenticate.
 cost pay|get
-    pay money or get balance.
-gene [fed fid] (meta gid|call gid arg)
-    get gene's meta data with gid, or call it with arg.
-    fed field is optional, defaults to local instance."
+    Pay money or get balance.
+gene [fed FID] (meta GID|call GID ARG)
+    Get the metadata of gene with gid, or call it with arg.
+    Fed field is optional, defaults to the local instance.
+meme (meta HASH|raw-put DAYS FILE|raw-get [-p] HASH)
+    Get the metadata of meme by its hash.
+    Put file as meme, keep some days.
+    Get meme by hash, -p means public meme."
     );
 }
