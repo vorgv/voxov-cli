@@ -19,6 +19,7 @@ fn main() {
         "auth" if args.len() == 2 => client.auth(),
         "cost" if args.len() == 3 => client.cost(&args[2]),
         "gene" => client.gene(&args),
+        //"meme" => client.meme(&args),
         _ => {
             eprint_help();
             process::exit(1);
@@ -43,15 +44,15 @@ Commands:
 ping
     Ping the server.
 auth
-    Interactively authenticate.
+    Interactively authenticate with SMS.
 cost pay|get
-    Pay money or get balance.
-gene [fed FID] (meta GID|call GID ARG)
-    Get the metadata of gene with gid, or call it with arg.
-    Fed field is optional, defaults to the local instance.
+    Get the link to pay or get the account balance.
+gene [fed FID] (meta GID|call GID [ARG])
+    Get the metadata with GID, or call the gene with ARG.
+    The Fed field is optional and defaults to the local instance.
 meme (meta HASH|raw-put DAYS FILE|raw-get [-p] HASH)
-    Get the metadata of meme by its hash.
-    Put file as meme, keep some days.
-    Get meme by hash, -p means public meme."
+    Get the metadata of the meme by HASH.
+    Put the FILE as a meme, then keep DAYS days.
+    Get meme by HASH, -p means public meme."
     );
 }

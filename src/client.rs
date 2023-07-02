@@ -5,7 +5,7 @@ use reqwest::{
     Error,
 };
 
-use crate::config::{Config, Session};
+use crate::config::{Config, Plan, Session};
 
 pub struct Client {
     config: Config,
@@ -175,52 +175,77 @@ impl Client {
         Ok(credit)
     }
 
+    pub fn print_cost(&self, response: &Response) {
+        let plan = &self.config.plan;
+        macro_rules! get {
+            ($s:expr) => {
+                get_header(response, $s).parse().unwrap()
+            };
+        }
+        let changes = Plan {
+            time: get!("time"),
+            space: get!("space"),
+            traffic: get!("traffic"),
+            tips: get!("tips"),
+        };
+        println!(
+            "time {} space {} traffic {} tips {}",
+            plan.time - changes.time,
+            plan.space - changes.space,
+            plan.traffic - changes.traffic,
+            plan.tips - changes.tips
+        );
+    }
+
     /// Call functions.
     pub fn gene(&self, arg: &[String]) -> Result<String, Error> {
         fn usage_exit() -> ! {
             eprintln!("gene [fed FID] (meta GID|call GID ARG)");
             process::exit(1);
         }
-        fn assert_len(v: &[String], n: usize) {
+        fn assert_min_len(v: &[String], n: usize) {
             if v.len() < n {
                 usage_exit();
             }
         }
-        assert_len(arg, 4);
+        assert_min_len(arg, 3);
         let (fed, method) = match arg[2].as_str() {
             "fed" => {
-                assert_len(arg, 6);
+                assert_min_len(arg, 5);
                 (Some(arg[3].clone()), &arg[4..])
             }
-            "meta" => (None, &arg[2..]), // Already asserted 4.
-            "call" => {
-                assert_len(arg, 5);
-                (None, &arg[2..])
-            }
+            "meta" => (None, &arg[2..]),
+            "call" => (None, &arg[2..]),
             _ => usage_exit(),
         };
         let builder = self.post_head(fed);
         match method[0].as_str() {
             "meta" => {
-                // Already asserted 6.
+                assert_min_len(method, 2);
                 let response = builder
                     .header("type", "GeneMeta")
                     .header("gid", &method[1])
                     .send()?;
                 handle_error!(response);
-                let meta = get_header(&response, "meta");
-                Ok(meta)
+                self.print_cost(&response);
+                response.text()
             }
             "call" => {
-                assert_len(arg, 7);
+                assert_min_len(method, 2);
                 let response = builder
                     .header("type", "GeneCall")
                     .header("gid", &method[1])
-                    .header("arg", &method[2])
+                    .header(
+                        "arg",
+                        match method.len() {
+                            2 => "".into(),
+                            _ => method[2..].join(" "),
+                        },
+                    )
                     .send()?;
                 handle_error!(response);
-                let result = get_header(&response, "result");
-                Ok(result)
+                self.print_cost(&response);
+                response.text()
             }
             _ => usage_exit(),
         }
