@@ -19,7 +19,7 @@ fn main() {
         "auth" if args.len() == 2 => client.auth(),
         "cost" if args.len() == 3 => client.cost(&args[2]),
         "gene" => client.gene(&args),
-        //"meme" => client.meme(&args),
+        "meme" => client.meme(&args),
         _ => {
             eprint_help();
             process::exit(1);

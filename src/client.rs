@@ -1,4 +1,4 @@
-use std::{io::stdin, process};
+use std::{fs::File, io::stdin, process};
 
 use reqwest::{
     blocking::{get, Client as ReqwestClient, RequestBuilder, Response},
@@ -19,6 +19,25 @@ macro_rules! handle_error {
             let e = get_header(&$response, "error");
             eprintln!("{}", e);
             process::exit(1);
+        }
+    };
+}
+
+macro_rules! generate_utils {
+    ($s:expr) => {
+        fn usage_exit() -> ! {
+            eprintln!($s);
+            process::exit(1);
+        }
+        fn assert_min_len(v: &[String], n: usize) {
+            if v.len() < n {
+                usage_exit();
+            }
+        }
+        fn assert_has_len(v: &[String], n: usize) {
+            if v.len() != n {
+                usage_exit();
+            }
         }
     };
 }
@@ -176,7 +195,6 @@ impl Client {
     }
 
     pub fn print_cost(&self, response: &Response) {
-        let plan = &self.config.plan;
         macro_rules! get {
             ($s:expr) => {
                 get_header(response, $s).parse().unwrap()
@@ -188,6 +206,7 @@ impl Client {
             traffic: get!("traffic"),
             tips: get!("tips"),
         };
+        let plan = &self.config.plan;
         println!(
             "time {} space {} traffic {} tips {}",
             plan.time - changes.time,
@@ -198,30 +217,22 @@ impl Client {
     }
 
     /// Call functions.
-    pub fn gene(&self, arg: &[String]) -> Result<String, Error> {
-        fn usage_exit() -> ! {
-            eprintln!("gene [fed FID] (meta GID|call GID ARG)");
-            process::exit(1);
-        }
-        fn assert_min_len(v: &[String], n: usize) {
-            if v.len() < n {
-                usage_exit();
-            }
-        }
-        assert_min_len(arg, 3);
-        let (fed, method) = match arg[2].as_str() {
+    pub fn gene(&self, args: &[String]) -> Result<String, Error> {
+        generate_utils!("gene [fed FID] (meta GID|call GID [ARG])");
+        assert_min_len(args, 3);
+        let (fed, method) = match args[2].as_str() {
             "fed" => {
-                assert_min_len(arg, 5);
-                (Some(arg[3].clone()), &arg[4..])
+                assert_min_len(args, 5);
+                (Some(args[3].clone()), &args[4..])
             }
-            "meta" => (None, &arg[2..]),
-            "call" => (None, &arg[2..]),
+            "meta" => (None, &args[2..]),
+            "call" => (None, &args[2..]),
             _ => usage_exit(),
         };
         let builder = self.post_head(fed);
         match method[0].as_str() {
             "meta" => {
-                assert_min_len(method, 2);
+                assert_has_len(method, 2);
                 let response = builder
                     .header("type", "GeneMeta")
                     .header("gid", &method[1])
@@ -246,6 +257,39 @@ impl Client {
                 handle_error!(response);
                 self.print_cost(&response);
                 response.text()
+            }
+            _ => usage_exit(),
+        }
+    }
+
+    /// Read write data.
+    pub fn meme(&self, args: &[String]) -> Result<String, Error> {
+        generate_utils!("meme (meta HASH|raw-put DAYS FILE|raw-get [-p] HASH)");
+        let builder = self.post_head(None);
+        assert_min_len(args, 3);
+        match args[2].as_str() {
+            "meta" => {
+                assert_has_len(args, 4);
+                let response = builder
+                    .header("type", "MemeMeta")
+                    .header("hash", &args[3])
+                    .send()?;
+                handle_error!(response);
+                self.print_cost(&response);
+                response.text()
+            }
+            "raw-put" => {
+                assert_has_len(args, 5);
+                let file = File::open(&args[4]).unwrap();
+                let response = builder
+                    .header("type", "MemeRawPut")
+                    .header("days", &args[3])
+                    .body(file)
+                    .send()?;
+                handle_error!(response);
+                self.print_cost(&response);
+                let hash = get_header(&response, "hash");
+                Ok(hash)
             }
             _ => usage_exit(),
         }
