@@ -50,9 +50,10 @@ cost pay|get
 gene [fed FID] (meta GID|call GID [ARG])
     Get the metadata with GID, or call the gene with ARG.
     The Fed field is optional and defaults to the local instance.
-meme (meta HASH|raw-put DAYS FILE|raw-get [-p] HASH)
+meme (meta HASH|raw-put DAYS FILE|raw-get [-p] HASH [FILE])
     Get the metadata of the meme by HASH.
     Put the FILE as a meme, then keep DAYS days.
-    Get meme by HASH, -p means public meme."
+    Get meme by HASH, -p means public meme.
+    Optionally save to FILE."
     );
 }

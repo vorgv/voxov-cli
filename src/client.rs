@@ -1,4 +1,8 @@
-use std::{fs::File, io::stdin, process};
+use std::{
+    fs::File,
+    io::{stdin, Write, BufRead},
+    process,
+};
 
 use reqwest::{
     blocking::{get, Client as ReqwestClient, RequestBuilder, Response},
@@ -265,7 +269,7 @@ impl Client {
     /// Read write data.
     pub fn meme(&self, args: &[String]) -> Result<String, Error> {
         generate_utils!("meme (meta HASH|raw-put DAYS FILE|raw-get [-p] HASH)");
-        let builder = self.post_head(None);
+        let mut builder = self.post_head(None);
         assert_min_len(args, 3);
         match args[2].as_str() {
             "meta" => {
@@ -279,17 +283,56 @@ impl Client {
                 response.text()
             }
             "raw-put" => {
-                assert_has_len(args, 5);
-                let file = File::open(&args[4]).unwrap();
-                let response = builder
+                assert_min_len(args, 4);
+                builder = builder
                     .header("type", "MemeRawPut")
-                    .header("days", &args[3])
-                    .body(file)
-                    .send()?;
+                    .header("days", &args[3]);
+                builder = if args.len() >= 5 {
+                    assert_has_len(args, 5);
+                    let file = File::open(&args[4]).unwrap();
+                    builder.body(file)
+                } else {
+                    builder.body(std::io::stdin().lock().lines().fold("".to_string(), |acc, line| {
+        acc + &line.unwrap() + "\n"
+    }))
+                };
+                let response = builder.send()?;
                 handle_error!(response);
                 self.print_cost(&response);
                 let hash = get_header(&response, "hash");
                 Ok(hash)
+            }
+            "raw-get" => {
+                assert_min_len(args, 4);
+                let mut to_file = false;
+                builder = match args[3].as_str() {
+                    "-p" => {
+                        assert_min_len(args, 5);
+                        if args.len() >= 5 {
+                            assert_has_len(args, 6);
+                            to_file = true;
+                        }
+                        builder.header("public", "true").header("hash", &args[4])
+                    }
+                    _ => {
+                        if args.len() >= 4 {
+                            assert_has_len(args, 5);
+                            to_file = true;
+                        }
+                        builder.header("public", "false").header("hash", &args[3])
+                    }
+                };
+                let response = builder.send()?;
+                handle_error!(response);
+                self.print_cost(&response);
+                if to_file {
+                    let filename = &args[args.len() - 1];
+                    let mut file = File::create(filename).unwrap();
+                    file.write_all(&response.bytes().unwrap()).unwrap();
+                    Ok("".into())
+                } else {
+                    response.text()
+                }
             }
             _ => usage_exit(),
         }
