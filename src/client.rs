@@ -1,16 +1,13 @@
-use std::{
-    fs::File,
-    io::{stdin, Write, BufRead},
-    process,
-};
-
-use reqwest::{
-    blocking::{get, Client as ReqwestClient, RequestBuilder, Response},
-    Error,
-};
-
 use crate::config::{Config, Plan, Session};
+use reqwest::blocking::{get, Client as ReqwestClient, RequestBuilder, Response};
+use std::{
+    error::Error,
+    fs::File,
+    io::{stdin, Read, Write},
+    process::exit,
+};
 
+/// Client state struct.
 pub struct Client {
     config: Config,
 }
@@ -22,34 +19,15 @@ macro_rules! handle_error {
         if t == "Error" {
             let e = get_header(&$response, "error");
             eprintln!("{}", e);
-            process::exit(1);
-        }
-    };
-}
-
-macro_rules! generate_utils {
-    ($s:expr) => {
-        fn usage_exit() -> ! {
-            eprintln!($s);
-            process::exit(1);
-        }
-        fn assert_min_len(v: &[String], n: usize) {
-            if v.len() < n {
-                usage_exit();
-            }
-        }
-        fn assert_has_len(v: &[String], n: usize) {
-            if v.len() != n {
-                usage_exit();
-            }
+            exit(1);
         }
     };
 }
 
 impl Client {
     /// Check connectivity.
-    pub fn ping(&self) -> Result<String, Error> {
-        get(&self.config.url)?.text()
+    pub fn ping(&self) -> Result<String, Box<dyn Error>> {
+        Ok(get(&self.config.url)?.text()?)
     }
 
     /// The http POST method.
@@ -93,8 +71,8 @@ impl Client {
         };
     }
 
-    /// Authenticate.
-    pub fn auth(&self) -> Result<String, Error> {
+    /// Authenticate interactively.
+    pub fn auth(&self) -> Result<String, Box<dyn Error>> {
         let (phone, message) = self.auth_sms_send_to()?;
         println!("Send SMS message {} to {}.", message, phone);
         println!("Press enter after sent.");
@@ -104,7 +82,8 @@ impl Client {
         Ok(format!("Your user ID is {}", uid))
     }
 
-    pub fn auth_session_start(&self) -> Result<(String, String), Error> {
+    /// Get access and refresh tokens.
+    pub fn auth_session_start(&self) -> Result<(String, String), Box<dyn Error>> {
         let response = self.post().header("type", "AuthSessionStart").send()?;
         handle_error!(response);
         let access = get_header(&response, "access");
@@ -112,7 +91,8 @@ impl Client {
         Ok((access, refresh))
     }
 
-    pub fn auth_session_refresh(&self) -> Result<String, Error> {
+    /// Get a new access with refresh token.
+    pub fn auth_session_refresh(&self) -> Result<String, Box<dyn Error>> {
         let response = self
             .post()
             .header("type", "AuthSessionRefresh")
@@ -123,7 +103,8 @@ impl Client {
         Ok(access)
     }
 
-    pub fn auth_session_end(&self, drop_refresh: bool) -> Result<(), Error> {
+    /// Deactivate tokens.
+    pub fn auth_session_end(&self, drop_refresh: bool) -> Result<(), Box<dyn Error>> {
         let mut builder = self
             .post()
             .header("type", "AuthSessionEnd")
@@ -136,7 +117,8 @@ impl Client {
         Ok(())
     }
 
-    pub fn auth_sms_send_to(&self) -> Result<(String, String), Error> {
+    /// Get where to send SMS.
+    pub fn auth_sms_send_to(&self) -> Result<(String, String), Box<dyn Error>> {
         let response = self
             .post()
             .header("type", "AuthSmsSendTo")
@@ -149,7 +131,8 @@ impl Client {
         Ok((phone, message))
     }
 
-    pub fn auth_sms_sent(&self, phone: &str, message: &str) -> Result<String, Error> {
+    /// Notify the server that SMS is sent.
+    pub fn auth_sms_sent(&self, phone: &str, message: &str) -> Result<String, Box<dyn Error>> {
         let response = self
             .post()
             .header("type", "AuthSmsSent")
@@ -163,19 +146,8 @@ impl Client {
         Ok(uid)
     }
 
-    /// Manage credit.
-    pub fn cost(&self, action: &str) -> Result<String, Error> {
-        match action {
-            "pay" => self.cost_pay(),
-            "get" => self.cost_get(),
-            _ => {
-                eprintln!("cost pay|get");
-                process::exit(1);
-            }
-        }
-    }
-
-    pub fn cost_pay(&self) -> Result<String, Error> {
+    /// Get the link to pay.
+    pub fn cost_pay(&self) -> Result<String, Box<dyn Error>> {
         let response = self
             .post()
             .header("type", "CostPay")
@@ -187,7 +159,8 @@ impl Client {
         Ok(uri)
     }
 
-    pub fn cost_get(&self) -> Result<String, Error> {
+    /// Get user balance.
+    pub fn cost_get(&self) -> Result<String, Box<dyn Error>> {
         let response = self
             .post()
             .header("type", "CostGet")
@@ -198,6 +171,7 @@ impl Client {
         Ok(credit)
     }
 
+    /// Print cost based on plan and returned changes.
     pub fn print_cost(&self, response: &Response) {
         macro_rules! get {
             ($s:expr) => {
@@ -220,121 +194,97 @@ impl Client {
         );
     }
 
-    /// Call functions.
-    pub fn gene(&self, args: &[String]) -> Result<String, Error> {
-        generate_utils!("gene [fed FID] (meta GID|call GID [ARG])");
-        assert_min_len(args, 3);
-        let (fed, method) = match args[2].as_str() {
-            "fed" => {
-                assert_min_len(args, 5);
-                (Some(args[3].clone()), &args[4..])
-            }
-            "meta" => (None, &args[2..]),
-            "call" => (None, &args[2..]),
-            _ => usage_exit(),
-        };
-        let builder = self.post_head(fed);
-        match method[0].as_str() {
-            "meta" => {
-                assert_has_len(method, 2);
-                let response = builder
-                    .header("type", "GeneMeta")
-                    .header("gid", &method[1])
-                    .send()?;
-                handle_error!(response);
-                self.print_cost(&response);
-                response.text()
-            }
-            "call" => {
-                assert_min_len(method, 2);
-                let response = builder
-                    .header("type", "GeneCall")
-                    .header("gid", &method[1])
-                    .header(
-                        "arg",
-                        match method.len() {
-                            2 => "".into(),
-                            _ => method[2..].join(" "),
-                        },
-                    )
-                    .send()?;
-                handle_error!(response);
-                self.print_cost(&response);
-                response.text()
-            }
-            _ => usage_exit(),
-        }
+    /// Get functions metadata.
+    pub fn gene_meta(&self, fed: Option<String>, gid: String) -> Result<String, Box<dyn Error>> {
+        let response = self
+            .post_head(fed)
+            .header("type", "GeneMeta")
+            .header("gid", gid)
+            .send()?;
+        handle_error!(response);
+        self.print_cost(&response);
+        Ok(response.text()?)
     }
 
-    /// Read write data.
-    pub fn meme(&self, args: &[String]) -> Result<String, Error> {
-        generate_utils!("meme (meta HASH|raw-put DAYS FILE|raw-get [-p] HASH)");
-        let mut builder = self.post_head(None);
-        assert_min_len(args, 3);
-        match args[2].as_str() {
-            "meta" => {
-                assert_has_len(args, 4);
-                let response = builder
-                    .header("type", "MemeMeta")
-                    .header("hash", &args[3])
-                    .send()?;
-                handle_error!(response);
-                self.print_cost(&response);
-                response.text()
+    /// Call function.
+    pub fn gene_call(
+        &self,
+        fed: Option<String>,
+        gid: String,
+        arg: Option<String>,
+    ) -> Result<String, Box<dyn Error>> {
+        let response = self
+            .post_head(fed)
+            .header("type", "GeneCall")
+            .header("gid", gid)
+            .header("arg", arg.unwrap_or_default())
+            .send()?;
+        handle_error!(response);
+        self.print_cost(&response);
+        Ok(response.text()?)
+    }
+
+    /// Get metadata of a meme.
+    pub fn meme_meta(&self, hash: String) -> Result<String, Box<dyn Error>> {
+        let response = self
+            .post_head(None)
+            .header("type", "MemeMeta")
+            .header("hash", hash)
+            .send()?;
+        handle_error!(response);
+        self.print_cost(&response);
+        Ok(response.text()?)
+    }
+
+    /// Upload a file.
+    pub fn meme_rawput(&self, days: u32, file: Option<String>) -> Result<String, Box<dyn Error>> {
+        let mut builder = self
+            .post_head(None)
+            .header("type", "MemeRawPut")
+            .header("days", days);
+        builder = match file {
+            Some(file) => {
+                let file = File::open(file).unwrap();
+                builder.body(file)
             }
-            "raw-put" => {
-                assert_min_len(args, 4);
-                builder = builder
-                    .header("type", "MemeRawPut")
-                    .header("days", &args[3]);
-                builder = if args.len() >= 5 {
-                    assert_has_len(args, 5);
-                    let file = File::open(&args[4]).unwrap();
-                    builder.body(file)
-                } else {
-                    builder.body(std::io::stdin().lock().lines().fold("".to_string(), |acc, line| {
-        acc + &line.unwrap() + "\n"
-    }))
-                };
-                let response = builder.send()?;
-                handle_error!(response);
-                self.print_cost(&response);
-                let hash = get_header(&response, "hash");
-                Ok(hash)
+            None => builder.body({
+                let mut buf = Vec::<u8>::new();
+                std::io::stdin().read_to_end(&mut buf)?;
+                buf
+            }),
+        };
+        let response = builder.send()?;
+        handle_error!(response);
+        self.print_cost(&response);
+        let hash = get_header(&response, "hash");
+        Ok(hash)
+    }
+
+    /// Download a file.
+    pub fn meme_rawget(
+        &self,
+        public: bool,
+        hash: String,
+        file: Option<String>,
+    ) -> Result<String, Box<dyn Error>> {
+        let mut builder = self.post_head(None).header("hash", hash);
+        builder = match public {
+            true => builder.header("public", "true"),
+            false => builder.header("public", "false"),
+        };
+        let response = builder.send()?;
+        handle_error!(response);
+        self.print_cost(&response);
+        match file {
+            Some(file) => {
+                let mut file = File::create(file).unwrap();
+                file.write_all(&response.bytes().unwrap()).unwrap();
+                Ok("".into())
             }
-            "raw-get" => {
-                assert_min_len(args, 4);
-                let mut to_file = false;
-                builder = match args[3].as_str() {
-                    "-p" => {
-                        assert_min_len(args, 5);
-                        if args.len() >= 5 {
-                            assert_has_len(args, 6);
-                            to_file = true;
-                        }
-                        builder.header("public", "true").header("hash", &args[4])
-                    }
-                    _ => {
-                        if args.len() >= 4 {
-                            assert_has_len(args, 5);
-                            to_file = true;
-                        }
-                        builder.header("public", "false").header("hash", &args[3])
-                    }
-                };
-                let response = builder.send()?;
-                handle_error!(response);
-                self.print_cost(&response);
-                if to_file {
-                    let filename = &args[args.len() - 1];
-                    let mut file = File::create(filename).unwrap();
-                    file.write_all(&response.bytes().unwrap()).unwrap();
-                    Ok("".into())
-                } else {
-                    response.text()
-                }
+            None => {
+                std::io::stdout().write_all(&response.bytes()?)?;
+                exit(0);
             }
-            _ => usage_exit(),
         }
     }
 }
@@ -348,6 +298,7 @@ impl Default for Client {
     }
 }
 
+/// Get header's value by key.
 fn get_header(response: &Response, key: &str) -> String {
     response.headers()[key]
         .to_str()
