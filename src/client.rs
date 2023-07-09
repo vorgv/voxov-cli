@@ -267,14 +267,19 @@ impl Client {
         hash: String,
         file: Option<String>,
     ) -> Result<String, Box<dyn Error>> {
-        let mut builder = self.post_head(None).header("hash", hash);
+        let mut builder = self
+            .post_head(None)
+            .header("type", "MemeRawGet")
+            .header("hash", hash);
         builder = match public {
             true => builder.header("public", "true"),
             false => builder.header("public", "false"),
         };
         let response = builder.send()?;
         handle_error!(response);
-        self.print_cost(&response);
+        if file.is_some() {
+            self.print_cost(&response);
+        }
         match file {
             Some(file) => {
                 let mut file = File::create(file).unwrap();
