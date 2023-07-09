@@ -4,7 +4,7 @@ use std::{
     error::Error,
     fs::File,
     io::{stdin, Read, Write},
-    process::exit,
+    process::exit, time::Duration,
 };
 
 /// Client state struct.
@@ -39,6 +39,7 @@ impl Client {
     fn post_head(&self, fed: Option<String>) -> RequestBuilder {
         let mut builder = self
             .post()
+            .timeout(Duration::from_secs(60*60*24*30))
             .header("access", &self.config.session.as_ref().unwrap().access)
             .header("time", self.config.plan.time.to_string())
             .header("space", self.config.plan.space.to_string())
