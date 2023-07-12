@@ -4,7 +4,8 @@ use std::{
     error::Error,
     fs::File,
     io::{stdin, Read, Write},
-    process::exit, time::Duration,
+    process::exit,
+    time::Duration,
 };
 
 /// Client state struct.
@@ -39,7 +40,7 @@ impl Client {
     fn post_head(&self, fed: Option<String>) -> RequestBuilder {
         let mut builder = self
             .post()
-            .timeout(Duration::from_secs(60*60*24*30))
+            .timeout(Duration::from_secs(60 * 60 * 24 * 30))
             .header("access", &self.config.session.as_ref().unwrap().access)
             .header("time", self.config.plan.time.to_string())
             .header("space", self.config.plan.space.to_string())
@@ -238,10 +239,10 @@ impl Client {
     }
 
     /// Upload a file.
-    pub fn meme_rawput(&self, days: u32, file: Option<String>) -> Result<String, Box<dyn Error>> {
+    pub fn meme_put(&self, days: u32, file: Option<String>) -> Result<String, Box<dyn Error>> {
         let mut builder = self
             .post_head(None)
-            .header("type", "MemeRawPut")
+            .header("type", "MemePut")
             .header("days", days);
         builder = match file {
             Some(file) => {
@@ -262,7 +263,7 @@ impl Client {
     }
 
     /// Download a file.
-    pub fn meme_rawget(
+    pub fn meme_get(
         &self,
         public: bool,
         hash: String,
@@ -270,7 +271,7 @@ impl Client {
     ) -> Result<String, Box<dyn Error>> {
         let mut builder = self
             .post_head(None)
-            .header("type", "MemeRawGet")
+            .header("type", "MemeGet")
             .header("hash", hash);
         builder = match public {
             true => builder.header("public", "true"),

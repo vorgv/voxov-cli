@@ -22,8 +22,8 @@ fn main() {
         },
         Command::Meme { command } => match command {
             MemeCommand::Meta { hash } => client.meme_meta(hash),
-            MemeCommand::RawPut { days, file } => client.meme_rawput(days, file),
-            MemeCommand::RawGet { public, hash, file } => client.meme_rawget(public, hash, file),
+            MemeCommand::Put { days, file } => client.meme_put(days, file),
+            MemeCommand::Get { public, hash, file } => client.meme_get(public, hash, file),
         },
     };
 

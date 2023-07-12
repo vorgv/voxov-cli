@@ -54,9 +54,9 @@ pub enum MemeCommand {
     /// Get the metadata of the meme by HASH.
     Meta { hash: String },
     /// Put the FILE as a meme, then keep DAYS days.
-    RawPut { days: u32, file: Option<String> },
+    Put { days: u32, file: Option<String> },
     /// Get meme by HASH. -p means public meme. Optionally saves to FILE.
-    RawGet {
+    Get {
         #[arg(short, long)]
         public: bool,
         hash: String,
