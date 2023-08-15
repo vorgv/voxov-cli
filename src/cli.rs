@@ -31,6 +31,8 @@ pub enum Command {
         #[command(subcommand)]
         command: MemeCommand,
     },
+    /// Gene map.
+    Map { file: Option<String> },
 }
 
 #[derive(Subcommand)]

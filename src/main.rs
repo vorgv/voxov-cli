@@ -25,6 +25,7 @@ fn main() {
             MemeCommand::Put { days, file } => client.meme_put(days, file),
             MemeCommand::Get { public, hash, file } => client.meme_get(public, hash, file),
         },
+        Command::Map { file } => client.gene_map(file),
     };
 
     match result {
